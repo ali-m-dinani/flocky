@@ -14,6 +14,14 @@ this integration, and ReaxKit neither imports nor bundles either component.
 
 ## Build and run
 
+The Roar GCC 13.4/Boost 1.81 build exposed missing explicit Boost filesystem
+stream declarations and dormant serial-path defects. The fork now includes the
+stream header, guards MPI-only calls, removes an unmatched brace and duplicate
+variable, assigns invalid serial fitness to infinity, and requires a charges
+file only when fixed-charge mode is active. Local Cygwin GNU C++11 syntax checks
+of both translation units pass with NLopt 2.4.2 headers; this is not a linked
+build or engine test. Rebuild on Roar against its installed NLopt 2.7.1.
+
 On Linux, provide a C++11 compiler, Boost filesystem/system and headers, and NLopt
 with its C++ header. `make -f Makefile.reaxkit` builds `flocky_serial` without MPI.
 Use CPPFLAGS/LDFLAGS for nonstandard dependency prefixes. This makefile is a

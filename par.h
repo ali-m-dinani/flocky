@@ -40,6 +40,7 @@
 #include <map>
 # define BOOST_NO_CXX11_SCOPED_ENUMS
 #include <boost/filesystem.hpp>
+#include <boost/filesystem/fstream.hpp>
 # undef BOOST_NO_CXX11_SCOPED_ENUMS
 #include <regex>
 #ifdef WITH_MPI

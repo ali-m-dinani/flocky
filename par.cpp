@@ -3074,6 +3074,7 @@ if (verbose == true) {
  double temphys;
 
   // if we parallelize the training set, each swarmcore sets the positions of its reaxffcores
+#ifdef WITH_MPI
   if (ptrainset > 1) {
      for (const int& swarmcore : swarmcores) {
            for (int i = 1; i < reaxffcores.size()/swarmcores.size() + 1; i++) {
@@ -3090,6 +3091,7 @@ if (verbose == true) {
      };
   };
 
+#endif
  // note: for localmin, dropout means ranges that belong to dropped dimensions, are set equal
  // so to exclude them from local minimization
  if (regular == 3) {
@@ -3142,7 +3144,9 @@ if (verbose == true) {
           };
           // sum the success counter throughout MPI_COMM_WORLD. Passive swarm members will contribute 0 each,
           // while the active swarm members will contribute 1 each.
+#ifdef WITH_MPI
           MPI_Allreduce( & lmin_success, & count_lmin_success, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+#endif
        }else {
                #ifdef WITH_MPI
                ofstream lmin_rep("lmin_rep.out." + std::to_string(state.cycle)+"."+std::to_string(core), ofstream::app);
@@ -3643,11 +3647,8 @@ if (verbose == true) {
       // insert back to str
       tempstr >> str;
       // check if fitness is numeric or ******
-      if (str.at(0) == '*' || !isdigit(str.at(0))) {
-        evalfit = numeric_limits < double > ::infinity();
-        if (find(reaxffcores.begin(), reaxffcores.end(), core) != reaxffcores.end()) {
-             pfitness = evalfit;
-        };
+      if (str.empty() || str.at(0) == '*' || !isdigit(str.at(0))) {
+        fitness = numeric_limits < double > ::infinity();
       } else {
           if (regular == 1 || regular == 2) {
              // convert to double
@@ -4276,7 +4277,7 @@ if (verbose == true) {
   // check if reaxff was set to run with fixed charges and require charges file
   read_icharg_control();
   boost::filesystem::ifstream charge_file("charges");
-  if (charge_file.fail()) {
+  if (fixcharges && charge_file.fail()) {
     cout << "Error: 'control' uses icharg=5 (fixed charges) but no 'charges' file was found!" << endl;
     charge_file.close();
     exit(EXIT_FAILURE);
@@ -4297,7 +4298,6 @@ if (verbose == true) {
   //if (boost::filesystem::exists("forgeo")) {
   //   boost::filesystem::copy_file("forgeo", "fort.111",
   //       boost::filesystem::copy_option::overwrite_if_exists);
-  };
 
 
 #endif
@@ -4475,7 +4475,11 @@ if (core == 0) {
 
       if (pathinfo_file.fail() || vectordump_file.fail()) {
         cout << "Error: 'path.info or vector.dump.path' files not found!" << endl;
+#ifdef WITH_MPI
         MPI_Abort(MPI_COMM_WORLD,8);
+#else
+        exit(EXIT_FAILURE);
+#endif
         pathinfo_file.close();
       }else{
       log << "\n";
@@ -5298,7 +5302,6 @@ if (verbose == true) {
       
     
     // evaluate fitness and set bfit = curfit
-    vector <double> numgrad;
     newSwarm.GetPar(p).state.cycle = cycle;
     iter = 0;
     newSwarm.GetPar(p).state.iter = iter;
