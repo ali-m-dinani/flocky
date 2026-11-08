@@ -1,0 +1,7 @@
+local_runs/
+local_build/
+__pycache__/
+*.o
+compile.log
+flocky_serial
+flocky_serial.exe
