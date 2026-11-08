@@ -7,6 +7,8 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import re
+from decimal import Decimal, InvalidOperation
 
 
 def number(value):
@@ -34,6 +36,45 @@ def render_control(path):
     return "".join(rows)
 
 
+def render_geometry(path):
+    rows = []
+    width = None
+    atoms = 0
+    for row, line in enumerate(Path(path).read_text().splitlines(), 1):
+        if line.startswith(("XTLGRF", "BIOGRF")):
+            width = None
+        if line.startswith("FORMAT ATOM"):
+            match = re.search(r"3f(10\.5|15\.10)", line, re.IGNORECASE)
+            if not match:
+                raise ValueError(f"Geometry line {row}: unsupported coordinate format")
+            width = 10 if match[1] == "10.5" else 15
+            line = line[:match.start()] + "3f15.10" + line[match.end():]
+        elif line.startswith("HETATM"):
+            if width is None:
+                raise ValueError(f"Geometry line {row}: FORMAT ATOM must precede atoms")
+            end = 30 + 3 * width
+            if len(line) < end + 19:
+                raise ValueError(f"Geometry line {row}: truncated atom record")
+            coordinates = []
+            for start in range(30, end, width):
+                try:
+                    value = Decimal(line[start:start + width].strip())
+                except InvalidOperation as error:
+                    raise ValueError(f"Geometry line {row}: invalid coordinate") from error
+                if not value.is_finite() or abs(value) >= 10000:
+                    raise ValueError(f"Geometry line {row}: nonfinite or oversized coordinate")
+                field = f"{value:15.10f}"
+                if len(field) != 15 or Decimal(field.strip()) != value:
+                    raise ValueError(f"Geometry line {row}: coordinate cannot fit without precision loss")
+                coordinates.append(field)
+            line = line[:30] + "".join(coordinates) + line[end:]
+            atoms += 1
+        rows.append(line)
+    if not atoms:
+        raise ValueError("Geometry contains no HETATM records")
+    return "\n".join(rows).rstrip("\n") + "\n\n"
+
+
 def prepare_request(path):
     request = json.loads(Path(path).read_text())
     if request.get("contract") != "reaxkit-external-runner-v1" or request.get("optimizer") != "flocky":
@@ -59,6 +100,7 @@ def prepare_request(path):
         if line.strip().upper().startswith(("FORCE", "FREQUENC")):
             raise ValueError("This smoke profile does not stage force/frequency auxiliary files")
     render_control(inputs["control"])
+    render_geometry(inputs["geo"])
     order = request.get("params_bounds_order")
     if order not in ("min_max", "max_min"):
         raise ValueError("Explicit params_bounds_order required")
@@ -128,6 +170,7 @@ def main(argv=None):
     for key, name in {"ffield": "ffield", "geo": "geo", "trainset": "trainset.in", "control": "control"}.items():
         shutil.copy2(request["inputs"][key], root / name)
     (root / "control").write_text(render_control(request["inputs"]["control"]))
+    (root / "geo").write_text(render_geometry(request["inputs"]["geo"]))
     shutil.copy2(settings["engine_executable"], root / "tapreaxff")
     (root / "params.mod").write_text("".join(rows))
     values = [0, 0, 1, 1, 0, 0.9, 0, 2, 0.001, 0, 0.5, 1, 0, 0,

@@ -39,8 +39,15 @@ campaign. The runner uses Python's standard library only; Python 3.8+ suffices.
 The initial profile is deliberately serial: one node/task/CPU, two swarm members,
 two iterations, one cycle. Local minimization, regularization, uncertainty
 quantification, and overfitting detection are disabled. Force/frequency targets
-requiring auxiliary files are rejected. Control settings are copied unchanged;
-they must be compatible with Tapered ReaxFF. Native RNG seeding and exact restart
+requiring auxiliary files are rejected. Control values are preserved while
+keywords are aligned to column 9 and comments removed. Geometry atom records
+declaring 3f10.5 or 3f15.10 coordinates are rendered as 3f15.10 for the engine.
+Original inputs remain unchanged; already converted geometries are not widened
+again. Unsupported formats, nonfinite coordinates, and values that cannot fit
+without precision loss are rejected during --check-only as well as execution.
+Other geometry records and atom prefix/suffix fields are preserved. Run
+`python examples/reaxkit_geometry_check.py` for synthetic regression checks
+without an engine. Native RNG seeding and exact restart
 are not exposed. Nonzero child status or absent finite history is an error.
 
 ## Parameter map
