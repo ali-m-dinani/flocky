@@ -3387,8 +3387,7 @@ if (verbose == true) {
           }
           /* redirect tapreaxff stdout to outfile*/
           dup2 (outfile, STDOUT_FILENO);
-          /* redirect tapreaxff stderr to /dev/null */
-          dup2(open("/dev/null", 0), 2);
+          dup2(outfile, STDERR_FILENO);
 
         /* printf("Child: executing args\n"); */
         // execute args                                                                                                                                                               

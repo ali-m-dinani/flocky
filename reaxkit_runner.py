@@ -16,6 +16,24 @@ def number(value):
     return result
 
 
+def render_control(path):
+    rows = []
+    for line in Path(path).read_text().splitlines():
+        fields = line.split()
+        if not fields or fields[0].startswith(("#", "!")):
+            continue
+        if len(fields) < 2:
+            raise ValueError("Control row requires value and keyword")
+        value, keyword = fields[:2]
+        number(value)
+        if len(value) > 7 or len(keyword) > 6:
+            raise ValueError("Control value/keyword exceeds native fixed-width format")
+        if value == "5" or keyword == "5":
+            raise ValueError("Native Flocky treats token '5' as fixed-charge mode; unsupported")
+        rows.append(f"{value:>7} {keyword:<6}\n")
+    return "".join(rows)
+
+
 def prepare_request(path):
     request = json.loads(Path(path).read_text())
     if request.get("contract") != "reaxkit-external-runner-v1" or request.get("optimizer") != "flocky":
@@ -40,8 +58,7 @@ def prepare_request(path):
     for line in Path(inputs["trainset"]).read_text().splitlines():
         if line.strip().upper().startswith(("FORCE", "FREQUENC")):
             raise ValueError("This smoke profile does not stage force/frequency auxiliary files")
-    if any("5" in line.split() for line in Path(inputs["control"]).read_text().splitlines()):
-        raise ValueError("Upstream read_icharg_control treats any token '5' as fixed-charge mode; this profile does not stage charges. Review control or fix the native parser before running")
+    render_control(inputs["control"])
     order = request.get("params_bounds_order")
     if order not in ("min_max", "max_min"):
         raise ValueError("Explicit params_bounds_order required")
@@ -110,6 +127,7 @@ def main(argv=None):
         raise ValueError("Use a fresh campaign; this native directory has already been prepared")
     for key, name in {"ffield": "ffield", "geo": "geo", "trainset": "trainset.in", "control": "control"}.items():
         shutil.copy2(request["inputs"][key], root / name)
+    (root / "control").write_text(render_control(request["inputs"]["control"]))
     shutil.copy2(settings["engine_executable"], root / "tapreaxff")
     (root / "params.mod").write_text("".join(rows))
     values = [0, 0, 1, 1, 0, 0.9, 0, 2, 0.001, 0, 0.5, 1, 0, 0,
@@ -126,7 +144,10 @@ def main(argv=None):
         for line in path.read_text().splitlines():
             fields = line.split()
             if len(fields) == 2:
-                scores.append(number(fields[1]))
+                try:
+                    scores.append(number(fields[1]))
+                except ValueError as error:
+                    raise RuntimeError("Nonfinite Flocky fitness; inspect native run.log and engine diagnostics") from error
     if not scores or not list(root.glob("ffield.gbest.*")):
         raise RuntimeError("No finite optimization history/best-field evidence; inspect native logs")
     print(f"Flocky completed; {len(scores)} best-so-far checkpoints (not evaluation count)")
