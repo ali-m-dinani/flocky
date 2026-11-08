@@ -77,3 +77,19 @@ Its candidate association is not reconstructed by ReaxKit. `log.flocky` preserve
 native diagnostics. Cross-engine objectives and parity data remain unverified.
 
 Local build/sample status and Roar gates are tracked in ReaxKit docs/FLOCKY.md.
+
+## Cooperative serial time budget
+
+Rebuild flocky_serial after updating. REAXKIT_OPTIMIZATION_TIME_LIMIT_SECONDS
+sets a positive wall-clock budget; existing cycle/iteration limits still apply.
+The serial loop checks between populations/generations, not inside an engine
+evaluation. REAXKIT_STOP_FILE is an optional cooperative stop marker.
+REAXKIT_TIMING_FILE selects the JSON phase/termination report (otherwise
+optimization-timing.json). Existing best-field saves remain at improvements.
+Native MPI timing is not implemented by this serial integration.
+
+The standalone timer regression can be compiled from
+examples/reaxkit_budget_check.cpp. Run it with
+REAXKIT_OPTIMIZATION_TIME_LIMIT_SECONDS=0.05 and REAXKIT_TIMING_FILE pointing
+to a disposable output file. It waits 100 ms, verifies expiration and writes
+a graceful timing record. This does not validate the ReaxFF engine.

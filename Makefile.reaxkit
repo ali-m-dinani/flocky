@@ -3,5 +3,5 @@ CXXFLAGS ?= -O2 -std=c++11
 CPPFLAGS += -I. -include unistd.h -include sys/wait.h -include fcntl.h
 LDLIBS += -lboost_filesystem -lboost_system -lnlopt
 
-flocky_serial: main.cpp par.cpp par.h
+flocky_serial: main.cpp par.cpp par.h run_budget.h
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) main.cpp par.cpp $(LDFLAGS) $(LDLIBS) -o $@

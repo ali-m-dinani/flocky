@@ -15,6 +15,7 @@
 * ------------------------------------------------------------------------ */
 
 #include "par.h"
+#include "run_budget.h"
 
 // PCG family of PRNGS: seed with a real random value, if available
 pcg_extras::seed_seq_from<std::random_device> seed_source;
@@ -5778,6 +5779,7 @@ if (verbose == true) {
   //         PROPAGATE: main loop over iterations
   // ---------------------------------------------------------------- //
   for (iter = 1; iter < maxiters; iter++) {
+    if (run_budget().stop()) break;
     inertiafac = inertiamax - iter * (inertiamax - inertiamin) / maxiters;
     //
     // main loop over swarm members

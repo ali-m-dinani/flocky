@@ -19,6 +19,7 @@
 #include <ctime>
 #include <vector>
 #include "par.h"
+#include "run_budget.h"
 
 #ifndef WITH_MPI
 #include <chrono>
@@ -31,6 +32,7 @@ int core = 0;
 int numcores = 1;
 
 int main(int argc, char * argv[]) {
+  run_budget();
   boost::filesystem::ofstream log("log.flocky", ofstream::trunc);
 #ifdef WITH_MPI
 
@@ -148,6 +150,7 @@ int main(int argc, char * argv[]) {
   for (cycle = 0; cycle < maxcycles; cycle++) {
     string cyclecount = std::to_string(cycle);
 
+    if (run_budget().stop()) break;
     auto starttime = chrono::steady_clock::now();
 
     // bkup original ffield before eval_fitness generates one for current particle fitness evaluation
@@ -158,6 +161,7 @@ int main(int argc, char * argv[]) {
 
     Swarm MySwarm;
     MySwarm.get_userinp();
+    run_budget().begin();
     MySwarm.Populate(MySwarm, cycle);
     MySwarm.Propagate(MySwarm, cycle);
     
@@ -170,6 +174,7 @@ int main(int argc, char * argv[]) {
     MySwarm = Swarm();
     log.close();
   };
+  run_budget().publish(true);
   return 0;
 };
 #endif
