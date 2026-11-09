@@ -93,3 +93,10 @@ examples/reaxkit_budget_check.cpp. Run it with
 REAXKIT_OPTIMIZATION_TIME_LIMIT_SECONDS=0.05 and REAXKIT_TIMING_FILE pointing
 to a disposable output file. It waits 100 ms, verifies expiration and writes
 a graceful timing record. This does not validate the ReaxFF engine.
+
+The Python runner permits a leading iteration-zero positive-infinity history
+entry only when the same cycle subsequently contains finite checkpoints.
+It preserves that entry in the native log and excludes it from the finite count.
+Later nonfinite entries, malformed records, cycles without finite history, and
+missing or empty best-field evidence still fail validation. This validation is
+not a scientific correctness or restartability certification.

@@ -144,6 +144,34 @@ def prepare_request(path):
     return request, rows
 
 
+def validate_history(root):
+    scores = []
+    for path in sorted(root.glob("opti_log.out.*")):
+        cycle_scores = []
+        records = [line.split() for line in path.read_text().splitlines() if line.strip()]
+        for index, fields in enumerate(records):
+            if len(fields) != 2:
+                raise RuntimeError(f"Malformed Flocky history: {path.name}")
+            try:
+                step = int(fields[0])
+                score = float(fields[1].replace("D", "E").replace("d", "e"))
+            except ValueError as error:
+                raise RuntimeError(f"Malformed Flocky history: {path.name}") from error
+            if index == 0 and step == 0 and score == math.inf:
+                print(f"{path.name}: initial +inf checkpoint retained but excluded from finite results")
+                continue
+            if not math.isfinite(score):
+                raise RuntimeError("Nonfinite Flocky fitness; inspect native run.log and engine diagnostics")
+            cycle_scores.append(score)
+        if not cycle_scores:
+            raise RuntimeError(f"No finite optimization history in {path.name}")
+        scores.extend(cycle_scores)
+    if not scores or not any(path.is_file() and path.stat().st_size > 0
+                             for path in root.glob("ffield.gbest.*")):
+        raise RuntimeError("No finite optimization history/best-field evidence; inspect native logs")
+    return scores
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("run_config", type=Path)
@@ -182,17 +210,7 @@ def main(argv=None):
                                      mapping_verified="user_supplied", settings=settings), indent=2))
     environment = dict(os.environ, OMP_NUM_THREADS="1", OPENBLAS_NUM_THREADS="1")
     subprocess.run([str(Path(settings["executable"]).resolve())], cwd=root, env=environment, check=True)
-    scores = []
-    for path in root.glob("opti_log.out.*"):
-        for line in path.read_text().splitlines():
-            fields = line.split()
-            if len(fields) == 2:
-                try:
-                    scores.append(number(fields[1]))
-                except ValueError as error:
-                    raise RuntimeError("Nonfinite Flocky fitness; inspect native run.log and engine diagnostics") from error
-    if not scores or not list(root.glob("ffield.gbest.*")):
-        raise RuntimeError("No finite optimization history/best-field evidence; inspect native logs")
+    scores = validate_history(root)
     print(f"Flocky completed; {len(scores)} best-so-far checkpoints (not evaluation count)")
     return 0
 
